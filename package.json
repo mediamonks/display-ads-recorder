@@ -1,0 +1,28 @@
+{
+  "name": "@mediamonks/display-ads-recorder",
+  "version": "0.0.1",
+  "description": "Command line tool to record display ads and output these to separate formats like video and animated gif",
+  "bin": {
+    "display-record": "./cli/displayAdsRecorder.js"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Mirko van Willigenburg",
+  "license": "ISC",
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "chalk": "^4.1.2",
+    "commander": "^9.3.0",
+    "ffmpeg.js": "^4.2.9003",
+    "fluent-ffmpeg": "^2.1.2",
+    "fs-extra": "^10.1.0",
+    "glob": "^8.0.3",
+    "inquirer": "^8.2.4",
+    "node-html-parser": "^5.3.3",
+    "puppeteer": "^15.1.1",
+    "sharp": "^0.30.7"
+  }
+}
