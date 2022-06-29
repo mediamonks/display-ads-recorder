@@ -14,10 +14,10 @@ display-ads-recorder
 ```
 
 ## Requirements
-- You must pre-build the ads (display-ads-recorder will ask you for the directory where it will search for the ads), see display-dev-server
-- Your ad's index.html must include a <meta name='ad.size'> tag. otherwise, display-ads-recorder will not recognize it as a ad.
+- You must pre-build the ads (display-ads-recorder will ask you for the directory where it will search for the ads), see [@mediamonks/display-dev-server](https://www.github.com/mediamonks/display-dev-server)
+- Your ad's index.html must include a \<meta name='ad.size'\> tag. otherwise, display-ads-recorder will not recognize it as a ad.
 - The ad must include the function that dispatches and listens to critical events for display-ads-recorder to work. see example here: http://www.github.com/mirkovw/display-record-template
-  - This function is included in @mediamonks/display-temple
+  - This function is included in [@mediamonks/display-temple](https://www.github.com/mediamonks/display-temple)
 
 ## Documentation
 
