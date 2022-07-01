@@ -15,6 +15,7 @@
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "chalk": "^4.1.2",
+    "cli-progress": "^3.11.2",
     "commander": "^9.3.0",
     "ffmpeg.js": "^4.2.9003",
     "fluent-ffmpeg": "^2.1.2",
@@ -23,6 +24,7 @@
     "inquirer": "^8.2.4",
     "node-html-parser": "^5.3.3",
     "puppeteer": "^15.1.1",
-    "sharp": "^0.30.7"
+    "sharp": "^0.30.7",
+    "tmp": "^0.2.1"
   }
 }

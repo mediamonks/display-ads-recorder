@@ -1,55 +1,64 @@
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffmpeg = require('fluent-ffmpeg');
+const cliProgress = require("cli-progress");
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 module.exports = async function renderGifFromVideoFile(inputVideo, outputPath) {
 
-    const input = inputVideo;
-    const paletteOutput = './build/temp_palette.png';
+  const input = inputVideo;
+  const paletteOutput = './build/temp_palette.png';
 
-    // create pallette
-    await new Promise((resolve, reject) => {
-        try {
-            const process = ffmpeg();
-            process.addInput(input);
-            process.withOptions([
-                '-vf palettegen',
-            ])
+  const progressBar = new cliProgress.SingleBar({
+    format: 'rendering video          [{bar}] {percentage}%'
+  }, cliProgress.Presets.shades_classic);
+  progressBar.start(100, 0);
 
-            process.output(paletteOutput);
-            // process.on('progress', (progress) => console.log(progress))
-            process.on('end', () => resolve())
-            process.run();
+  // create pallette
+  await new Promise((resolve, reject) => {
+    try {
+      const process = ffmpeg();
+      process.addInput(input);
+      process.withOptions([
+        '-vf palettegen',
+      ])
 
-        } catch (e) {
-            reject(e);
-        }
-    })
-    // console.log('created palette')
+      process.output(paletteOutput);
+      process.on('end', () => resolve())
+      process.run();
 
-    // create gif
-    await new Promise((resolve, reject) => {
-        try {
-            const process = ffmpeg();
-            process.addInput(input);
-            process.addInput(paletteOutput);
+    } catch (e) {
+      reject(e);
+    }
+  })
+  // console.log('created palette')
 
-            process.withOptions([
-                '-lavfi paletteuse',
-            ])
-            process.fpsInput(30)
-            process.fps(30)
-            // process.videoBitrate(10000)
-            process.output(outputPath);
+  // create gif
+  await new Promise((resolve, reject) => {
+    try {
+      const process = ffmpeg();
+      process.addInput(input);
+      process.addInput(paletteOutput);
 
-            // process.on('progress', (progress) => console.log(progress))
-            process.on('end', () => resolve())
-            process.run();
+      process.withOptions([
+        '-lavfi paletteuse',
+      ])
+      process.fpsInput(30)
+      process.fps(30)
+      process.output(outputPath);
 
-        } catch (e) {
-            reject(e);
-        }
-    })
+      process.on('progress', (progress) => {
+        progressBar.update(Math.round(progress.percentage));
+      })
+      process.on('end', () => {
+        progressBar.stop();
+        resolve()
+      })
+      process.run();
 
-    return outputPath;
+    } catch (e) {
+      reject(e);
+    }
+  })
+
+  return outputPath;
 }

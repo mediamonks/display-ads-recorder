@@ -76,28 +76,28 @@ module.exports = async function displayAdsRecorder(options) {
         // render screenshots from ad using puppeteer
         const screenshots = await recordAd(ad, adSelection.fps);
 
-        console.log(`captured ${screenshots.files.length} screenshot(s)`);
+        //console.log(`captured ${screenshots.files.length} screenshot(s)`);
         //console.log(`backup image: ${screenshots.baseDir}\\${screenshots.files.slice(-1)}`)
 
         // convert screenshots to video and place in targetDir
         const outputPathVideo = path.join(targetDir,`${path.basename(path.dirname(ad))}.mp4`)
         const videoFile = await renderVideo(screenshots.baseDir, adSelection.fps, outputPathVideo);
-        console.log(`rendered video: ${path.resolve(videoFile)}`);
-
-        // if backup img is selected, convert last image from sequence and place in targetDir
-        if (adSelection.output.indexOf('jpg') !== -1) {
-            const outputPathImg = path.join(targetDir,`${path.basename(path.dirname(ad))}.jpg`)
-            const backupImg = await getBackupImage(`${screenshots.baseDir}\\${screenshots.files.slice(-1)}`, outputPathImg);
-            console.log(`rendered backup image: ${path.resolve(backupImg)}`);
-        }
+        //console.log(`rendered video: ${path.resolve(videoFile)}`);
 
         // if gif is selected, convert video to GIF file and place in targetDir
         if (adSelection.output.indexOf('gif') !== -1) {
             const outputPathGif = path.join(targetDir,`${path.basename(path.dirname(ad))}.gif`)
             const animatedGif = await renderGIf(path.resolve(videoFile),outputPathGif);
-            console.log(`rendered animated GIF: ${path.resolve(animatedGif)}`);
+            //console.log(`rendered animated GIF: ${path.resolve(animatedGif)}`);
             // console.log(animatedGif);
         }
+
+      // if backup img is selected, convert last image from sequence and place in targetDir
+      if (adSelection.output.indexOf('jpg') !== -1) {
+        const outputPathImg = path.join(targetDir,`${path.basename(path.dirname(ad))}.jpg`)
+        const backupImg = await getBackupImage(`${screenshots.baseDir}\\${screenshots.files.slice(-1)}`, outputPathImg);
+        console.log(`rendered backup image: ${path.resolve(backupImg)}`);
+      }
     }
 
 }
