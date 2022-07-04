@@ -9,7 +9,7 @@ module.exports = async function renderGifFromVideoFile(inputVideo, outputPath) {
   const paletteOutput = './build/temp_palette.png';
 
   const progressBar = new cliProgress.SingleBar({
-    format: 'rendering video          [{bar}] {percentage}%'
+    format: 'rendering gif            [{bar}] {percentage}%'
   }, cliProgress.Presets.shades_classic);
   progressBar.start(100, 0);
 
