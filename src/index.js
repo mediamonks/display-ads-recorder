@@ -25,8 +25,7 @@ module.exports = async function displayAdsRecorder(options) {
     // if backup img is selected, convert last image from sequence and place in targetDir
     if (adSelection.output.indexOf('jpg') !== -1) {
       const outputPathImg = path.join(targetDir, `${path.basename(path.dirname(ad))}.jpg`)
-      const backupImg = await getBackupImage(`${screenshots.baseDir}\\${screenshots.files.slice(-1)}`, outputPathImg);
+      const backupImg = await getBackupImage(`${screenshots.baseDir}/${screenshots.files.slice(-1)}`, outputPathImg);
     }
   }
-
 }

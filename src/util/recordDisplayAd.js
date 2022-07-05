@@ -108,6 +108,8 @@ module.exports = async function recordDisplayAd(target, fps) {
 
     await listenFor(['animation-info', 'animation-record', 'animation-end']);
 
-    await page.goto(path.resolve(target));
+
+    const url = `file://${path.resolve(target)}`
+    await page.goto(url);
   });
 }

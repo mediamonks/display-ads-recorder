@@ -5,7 +5,7 @@ const cliProgress = require('cli-progress');
 
 module.exports = async function renderVideoFromFiles(filesPath, fps = 30, output = 'video.mp4') {
   const screenshotExt = 'png';
-  const input = `${filesPath}\\screenshot_%06d.${screenshotExt}`
+  const input = `${filesPath}/screenshot_%06d.${screenshotExt}`
 
   const progressBar = new cliProgress.SingleBar({
     format: 'rendering video          [{bar}] {percentage}%'
