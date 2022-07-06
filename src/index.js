@@ -19,7 +19,7 @@ module.exports = async function displayAdsRecorder(options) {
     // if gif is selected, convert video to GIF file and place in targetDir
     if (adSelection.output.indexOf('gif') !== -1) {
       const outputPathGif = path.join(targetDir, `${path.basename(path.dirname(ad))}.gif`)
-      await renderGIf(path.resolve(videoFile), outputPathGif);
+      await renderGIf(path.resolve(videoFile), outputPathGif, adSelection.gifLoopOptions );
     }
 
     // if backup img is selected, convert last image from sequence and place in targetDir

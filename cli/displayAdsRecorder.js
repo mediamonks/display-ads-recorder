@@ -61,6 +61,20 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
 
   configQuestions.push({
     type: 'list',
+    name: 'gifLoopOptions',
+    message: 'You selected .gif as additional output. Would you like it run once or loop?',
+    when: function( answers ) {
+      return answers.output.includes('gif');
+    },
+    choices: [
+      {name: 'Run once', value: '-1'},
+      {name: 'Loop', value: '0'},
+    ],
+    default: 0
+  });
+
+  configQuestions.push({
+    type: 'list',
     name: 'fps',
     message: 'Please select fps to record at',
     choices: [
@@ -76,6 +90,8 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
   if (adSelection.location.indexOf('all') > -1) {
     adSelection.location = allAds;
   }
+
+  // console.log(adSelection);
 
   await displayAdsRecorder({
     targetDir, adSelection
