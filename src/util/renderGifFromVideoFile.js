@@ -3,7 +3,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const cliProgress = require("cli-progress");
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-module.exports = async function renderGifFromVideoFile(inputVideo, outputPath) {
+module.exports = async function renderGifFromVideoFile(inputVideo, outputPath, gifLoopOptions) {
 
   const input = inputVideo;
   const paletteOutput = './build/temp_palette.png';
@@ -41,6 +41,7 @@ module.exports = async function renderGifFromVideoFile(inputVideo, outputPath) {
 
       process.withOptions([
         '-lavfi paletteuse',
+        `-loop ${gifLoopOptions}`
       ])
       process.fpsInput(30)
       process.fps(30)
