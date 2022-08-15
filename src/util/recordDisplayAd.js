@@ -68,9 +68,8 @@ module.exports = async function recordDisplayAd(target, fps) {
         }
       });
 
-      progressBar.update(screenshot_nr);
-
       screenshot_nr++;
+      progressBar.update(screenshot_nr);
       nextFrame += (1000 / fps);
       await dispatchEventToPage("animation-gotoframe-request", {"detail": nextFrame});
     }
