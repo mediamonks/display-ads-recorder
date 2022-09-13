@@ -3,6 +3,7 @@ const renderVideo = require('./util/renderVideoFromFiles');
 const getBackupImage = require('./util/getBackupImage');
 const renderGIf = require('./util/renderGifFromVideoFile')
 const path = require('path');
+const { log } = require('console');
 
 module.exports = async function displayAdsRecorder(options) {
   const { targetDir, adSelection } = options;
@@ -33,6 +34,8 @@ module.exports = async function displayAdsRecorder(options) {
       recordResult.jpgPath = outputPathImg;
     }
   }
+  
+  console.log('Well done');
 
   return recordResult;
 }
