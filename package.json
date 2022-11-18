@@ -1,6 +1,6 @@
 {
   "name": "@mediamonks/display-ads-recorder",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Command line tool to record display ads and output these to separate formats like video and animated gif",
   "bin": {
     "display-ads-recorder": "./cli/displayAdsRecorder.js"
@@ -40,7 +40,7 @@
     "glob": "^8.0.3",
     "inquirer": "^8.2.4",
     "node-html-parser": "^5.3.3",
-    "puppeteer": "^15.1.1",
+    "puppeteer": "19.2.2",
     "sharp": "^0.30.7",
     "tmp": "^0.2.1"
   }
