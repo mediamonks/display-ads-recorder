@@ -31,12 +31,16 @@ module.exports = async function displayAdsRecorder(options) {
 
     // convert screenshots to video and place in targetDir
     const outputPathVideo = path.join(targetDir, `${htmlBaseDirName}.mp4`);
-    const videoFile = await render// render screenshots from ad using puppeteer
-    const screenshots = await recordAd({
-      target: adLocation,
-      url,
-      fps: adSelection.fps,
-    });in(targetDir, `${htmlBaseDirName}.gif`);
+    const videoFile = await renderVideo(
+      screenshots.baseDir,
+      adSelection.fps,
+      outputPathVideo
+    );
+    recordResult.videoPath = outputPathVideo;
+
+    // if gif is selected, convert video to GIF file and place in targetDir
+    if (adSelection.output.indexOf("gif") !== -1) {
+      const outputPathGif = path.join(targetDir, `${htmlBaseDirName}.gif`);
       await renderGIf(
         path.resolve(videoFile),
         outputPathGif,
