@@ -21,7 +21,6 @@ const chromiumInstancesAmount = 8;
 module.exports = async function recordDisplayAd({ target, url, fps }) {
   return new Promise(async (resolve) => {
     let screenshotBase = path.join(path.dirname(target), ".cache/screenshots/");
-    let adDetails = {};
 
     if (!fs.existsSync(screenshotBase))
       fs.mkdirSync(screenshotBase, { recursive: true });
@@ -50,7 +49,7 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
         instances: chromiumInstancesAmount,
       });
 
-      progressBar.start(animationInfo.duration * fps, 0);
+      progressBar.start(Math.ceil(animationInfo.duration * fps), 0);
       const startTime = new Date().getTime();
 
       await Promise.all(
