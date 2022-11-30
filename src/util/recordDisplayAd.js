@@ -2,70 +2,26 @@ const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs-extra");
 const cliProgress = require("cli-progress");
+const minimal_args = require("../data/minimalArgs");
+const padLeadingZeros = require("./padLeadingZeros");
+const getFramesArrays = require("./getFramesArrays");
 
-const padLeadingZeros = (num, size) => {
-  let s = num + "";
-  while (s.length < size) {
-    s = "0" + s;
-  }
-  return s;
-};
+const progressBar = new cliProgress.SingleBar(
+  {
+    format:
+      "capturing screenshots    [{bar}] {percentage}% | ETA: {eta}s | {value}/{total}",
+  },
+  cliProgress.Presets.shades_classic
+);
 
-const minimal_args = [
-  "--autoplay-policy=user-gesture-required",
-  "--disable-background-networking",
-  "--disable-background-timer-throttling",
-  "--disable-backgrounding-occluded-windows",
-  "--disable-breakpad",
-  "--disable-client-side-phishing-detection",
-  "--disable-component-update",
-  "--disable-default-apps",
-  "--disable-dev-shm-usage",
-  "--disable-domain-reliability",
-  "--disable-extensions",
-  "--disable-features=AudioServiceOutOfProcess",
-  "--disable-hang-monitor",
-  "--disable-ipc-flooding-protection",
-  "--disable-notifications",
-  "--disable-offer-store-unmasked-wallet-cards",
-  "--disable-popup-blocking",
-  "--disable-print-preview",
-  "--disable-prompt-on-repost",
-  "--disable-renderer-backgrounding",
-  "--disable-setuid-sandbox",
-  "--disable-speech-api",
-  "--disable-sync",
-  "--hide-scrollbars",
-  "--ignore-gpu-blacklist",
-  "--metrics-recording-only",
-  "--mute-audio",
-  "--no-default-browser-check",
-  "--no-first-run",
-  "--no-pings",
-  "--no-sandbox",
-  "--no-zygote",
-  "--password-store=basic",
-  "--use-gl=swiftshader",
-  "--use-mock-keychain",
-];
+const screenshotBaseFilename = "screenshot_";
+const screenshotExt = "jpg";
+const chromiumInstancesAmount = 8;
 
-module.exports = async function recordDisplayAd(target, fps) {
-  return new Promise(async (resolve, reject) => {
+module.exports = async function recordDisplayAd({ target, url, fps }) {
+  return new Promise(async (resolve) => {
     let screenshotBase = path.join(path.dirname(target), ".cache/screenshots/");
-    let screenshotBaseFilename = "screenshot_";
-    const screenshotExt = "jpg";
-    let screenshot_nr = 0;
-    let nextFrame = 0;
     let adDetails = {};
-    const url = `file://${path.resolve(target)}`;
-
-    const progressBar = new cliProgress.SingleBar(
-      {
-        format:
-          "capturing screenshots    [{bar}] {percentage}% | ETA: {eta}s | {value}/{total}",
-      },
-      cliProgress.Presets.shades_classic
-    );
 
     if (!fs.existsSync(screenshotBase))
       fs.mkdirSync(screenshotBase, { recursive: true });
@@ -80,174 +36,102 @@ module.exports = async function recordDisplayAd(target, fps) {
     const page = await browser.newPage();
 
     await page.exposeFunction("onMessageReceivedEvent", async (e) => {
-      switch (e.data.name) {
-        case "animation-ready":
-          await handleAnimationInfoReceived(e.data);
-          break;
+      if (e.data.name === "animation-ready") {
+        await browser.close();
+        await handleAnimationInfoReceived(e.data);
       }
     });
 
-    let allFramesArray = [];
-    let chunkedFrameArrays = [];
-
-    async function handleAnimationInfoReceived(data) {
-      adDetails = data;
-      console.log(data.duration);
-
-      for (let i = 0; i < data.duration * fps; i++) {
-        allFramesArray.push({
-          frameNr: i,
-          frameTime: 1000 * (i / fps),
-        });
-      }
-
-      let size = Math.ceil(allFramesArray.length / 4);
-
-      for (let i = 0; i < allFramesArray.length; i += size) {
-        chunkedFrameArrays.push(allFramesArray.slice(i, i + size));
-      }
-
+    async function handleAnimationInfoReceived(animationInfo) {
       let totalScreenshotsRecorded = 0;
-      progressBar.start(allFramesArray.length, 0);
+      const framesArrays = getFramesArrays({
+        duration: animationInfo.duration,
+        fps,
+        instances: chromiumInstancesAmount,
+      });
+
+      progressBar.start(animationInfo.duration * fps, 0);
+      const startTime = new Date().getTime();
 
       await Promise.all(
-        chunkedFrameArrays.map((frameArray) => {
+        framesArrays.map((framesArray) => {
           return new Promise(async (resolve) => {
-            //console.log("recording some frames...");
-
-            const subBrowser = await puppeteer.launch({
-              //executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // if we ever want to include video. but then the video needs to be controlled by the timeline..
+            const browser = await puppeteer.launch({
               headless: true, // headless to false for testing
               args: minimal_args,
             });
 
-            const subPage = await subBrowser.newPage();
+            const page = await browser.newPage();
 
-            await subPage.setViewport({
-              width: adDetails.width,
-              height: adDetails.height,
+            await page.setViewport({
+              width: animationInfo.width,
+              height: animationInfo.height,
             });
 
-            await subPage.exposeFunction(
-              "onMessageReceivedEvent",
-              async (e) => {
-                switch (e.data.name) {
-                  case "animation-ready":
-                    await handleAnimationReady();
-                    break;
-                  case "current-frame":
-                    await recordFrame();
-                    break;
-                }
+            await page.exposeFunction("onMessageReceivedEvent", async (e) => {
+              switch (e.data.name) {
+                case "animation-ready":
+                  await dispatchEventToPage(page, {
+                    name: "request-goto-frame",
+                    frame: framesArray[0].frameTime,
+                  });
+                  break;
+                case "current-frame":
+                  await recordFrame();
+                  break;
               }
-            );
+            });
 
-            async function handleAnimationReady() {
-              await dispatchEventToPage(subPage, {
-                name: "request-goto-frame",
-                frame: frameArray[0].frameTime,
-              });
-            }
-
-            let currentFrame = 0;
-
+            let currentIndex = 0;
             async function recordFrame() {
-              let screenshot_nr = frameArray[currentFrame].frameNr;
-
-              //console.log(
-              //  `recording frame ${screenshot_nr} at ${frameArray[currentFrame].frameTime}`
-              //);
-
-              await subPage.screenshot({
+              const screenshot_nr = framesArray[currentIndex].frameNr;
+              const ssPath = await page.screenshot({
                 path:
                   screenshotBase +
                   screenshotBaseFilename +
                   padLeadingZeros(screenshot_nr, 6) +
-                  "." +
-                  screenshotExt,
+                  ".jpg",
                 type: "jpeg",
                 quality: 100,
               });
 
-              currentFrame++;
+              currentIndex++;
               totalScreenshotsRecorded++;
               progressBar.update(totalScreenshotsRecorded);
 
-              if (currentFrame < frameArray.length) {
-                await dispatchEventToPage(subPage, {
+              if (currentIndex < framesArray.length) {
+                await dispatchEventToPage(page, {
                   name: "request-goto-frame",
-                  frame: frameArray[currentFrame].frameTime,
+                  frame: framesArray[currentIndex].frameTime,
                 });
               } else {
-                //console.log("batch done");
-                await subBrowser.close();
+                await browser.close();
                 resolve();
               }
             }
 
-            await listenFor(subPage, "message"); // Listen for "message" custom event on page load.
+            await listenFor(page, "message"); // Listen for "message" custom event on page load.
 
-            await subPage.goto(url);
+            await page.goto(url);
           });
         })
       );
 
-      //console.log("all done");
-
-      await browser.close();
       progressBar.stop();
+
+      console.log(
+        `done in ${(new Date().getTime() - startTime) / 1000} seconds`
+      );
 
       const result = fs.readdirSync(screenshotBase).filter((ss) => {
         return ss.indexOf(`.${screenshotExt}`) !== -1;
       });
-
-      //console.log(result);
 
       resolve({
         baseDir: path.resolve(screenshotBase),
         files: result,
       });
     }
-
-    //async function recordFrame() {
-    //  await page.screenshot({
-    //    path:
-    //      screenshotBase +
-    //      screenshotBaseFilename +
-    //      padLeadingZeros(screenshot_nr, 6) +
-    //      "." +
-    //      screenshotExt,
-    //    type: "jpeg",
-    //    quality: 100,
-    //  });
-
-    //  screenshot_nr++;
-    //  progressBar.update(screenshot_nr);
-    //  nextFrame += 1000 / fps;
-
-    //  if (nextFrame < adDetails.duration * 1000) {
-    //    await dispatchEventToPage({
-    //      name: "request-goto-frame",
-    //      frame: nextFrame,
-    //    });
-    //  } else {
-    //    handleAnimationEnd();
-    //  }
-    //}
-
-    //async function handleAnimationEnd() {
-    //  await browser.close();
-    //  progressBar.stop();
-
-    //  const result = fs.readdirSync(screenshotBase).filter((ss) => {
-    //    return ss.indexOf(`.${screenshotExt}`) !== -1;
-    //  });
-
-    //  resolve({
-    //    baseDir: path.resolve(screenshotBase),
-    //    files: result,
-    //  });
-    //}
 
     async function dispatchEventToPage(page, data) {
       await page.evaluate(function (data) {
@@ -264,8 +148,6 @@ module.exports = async function recordDisplayAd(target, fps) {
     }
 
     await listenFor(page, "message"); // Listen for "message" custom event on page load.
-
-    console.log("minimal args");
 
     await page.goto(url);
   });
