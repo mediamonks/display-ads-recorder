@@ -51,7 +51,6 @@ const minimal_args = [
 
 module.exports = async function recordDisplayAd(target, fps) {
   return new Promise(async (resolve, reject) => {
-    // let rootPath = path.dirname(target);
     let screenshotBase = path.join(path.dirname(target), ".cache/screenshots/");
     let screenshotBaseFilename = "screenshot_";
     const screenshotExt = "jpg";
@@ -82,57 +81,119 @@ module.exports = async function recordDisplayAd(target, fps) {
 
     await page.exposeFunction("onMessageReceivedEvent", async (e) => {
       switch (e.data.name) {
-        case "animation-config":
+        case "animation-ready":
           await handleAnimationInfoReceived(e.data);
-          break;
-        case "current-frame":
-          await recordFrame();
           break;
       }
     });
 
+    let allFramesArray = [];
+    let chunkedFrameArrays = [];
+
     async function handleAnimationInfoReceived(data) {
       adDetails = data;
-      progressBar.start(Math.ceil(adDetails.duration * fps), 0);
+      console.log(data.duration);
 
-      page.setViewport({
-        width: adDetails.width,
-        height: adDetails.height,
-      });
-
-      await dispatchEventToPage({
-        name: "request-goto-frame",
-        frame: nextFrame,
-      });
-    }
-
-    async function recordFrame() {
-      await page.screenshot({
-        path:
-          screenshotBase +
-          screenshotBaseFilename +
-          padLeadingZeros(screenshot_nr, 6) +
-          "." +
-          screenshotExt,
-        type: "jpeg",
-        quality: 100,
-      });
-
-      screenshot_nr++;
-      progressBar.update(screenshot_nr);
-      nextFrame += 1000 / fps;
-
-      if (nextFrame < adDetails.duration * 1000) {
-        await dispatchEventToPage({
-          name: "request-goto-frame",
-          frame: nextFrame,
+      for (let i = 0; i < data.duration * fps; i++) {
+        allFramesArray.push({
+          frameNr: i,
+          frameTime: 1000 * (i / fps),
         });
-      } else {
-        handleAnimationEnd();
       }
-    }
 
-    async function handleAnimationEnd() {
+      let size = Math.ceil(allFramesArray.length / 4);
+
+      for (let i = 0; i < allFramesArray.length; i += size) {
+        chunkedFrameArrays.push(allFramesArray.slice(i, i + size));
+      }
+
+      let totalScreenshotsRecorded = 0;
+      progressBar.start(allFramesArray.length, 0);
+
+      await Promise.all(
+        chunkedFrameArrays.map((frameArray) => {
+          return new Promise(async (resolve) => {
+            //console.log("recording some frames...");
+
+            const subBrowser = await puppeteer.launch({
+              //executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // if we ever want to include video. but then the video needs to be controlled by the timeline..
+              headless: true, // headless to false for testing
+              args: minimal_args,
+            });
+
+            const subPage = await subBrowser.newPage();
+
+            await subPage.setViewport({
+              width: adDetails.width,
+              height: adDetails.height,
+            });
+
+            await subPage.exposeFunction(
+              "onMessageReceivedEvent",
+              async (e) => {
+                switch (e.data.name) {
+                  case "animation-ready":
+                    await handleAnimationReady();
+                    break;
+                  case "current-frame":
+                    await recordFrame();
+                    break;
+                }
+              }
+            );
+
+            async function handleAnimationReady() {
+              await dispatchEventToPage(subPage, {
+                name: "request-goto-frame",
+                frame: frameArray[0].frameTime,
+              });
+            }
+
+            let currentFrame = 0;
+
+            async function recordFrame() {
+              let screenshot_nr = frameArray[currentFrame].frameNr;
+
+              //console.log(
+              //  `recording frame ${screenshot_nr} at ${frameArray[currentFrame].frameTime}`
+              //);
+
+              await subPage.screenshot({
+                path:
+                  screenshotBase +
+                  screenshotBaseFilename +
+                  padLeadingZeros(screenshot_nr, 6) +
+                  "." +
+                  screenshotExt,
+                type: "jpeg",
+                quality: 100,
+              });
+
+              currentFrame++;
+              totalScreenshotsRecorded++;
+              progressBar.update(totalScreenshotsRecorded);
+
+              if (currentFrame < frameArray.length) {
+                await dispatchEventToPage(subPage, {
+                  name: "request-goto-frame",
+                  frame: frameArray[currentFrame].frameTime,
+                });
+              } else {
+                //console.log("batch done");
+                await subBrowser.close();
+                resolve();
+              }
+            }
+
+            await listenFor(subPage, "message"); // Listen for "message" custom event on page load.
+
+            await subPage.goto(url);
+          });
+        })
+      );
+
+      //console.log("all done");
+
       await browser.close();
       progressBar.stop();
 
@@ -140,19 +201,61 @@ module.exports = async function recordDisplayAd(target, fps) {
         return ss.indexOf(`.${screenshotExt}`) !== -1;
       });
 
+      //console.log(result);
+
       resolve({
         baseDir: path.resolve(screenshotBase),
         files: result,
       });
     }
 
-    async function dispatchEventToPage(data) {
+    //async function recordFrame() {
+    //  await page.screenshot({
+    //    path:
+    //      screenshotBase +
+    //      screenshotBaseFilename +
+    //      padLeadingZeros(screenshot_nr, 6) +
+    //      "." +
+    //      screenshotExt,
+    //    type: "jpeg",
+    //    quality: 100,
+    //  });
+
+    //  screenshot_nr++;
+    //  progressBar.update(screenshot_nr);
+    //  nextFrame += 1000 / fps;
+
+    //  if (nextFrame < adDetails.duration * 1000) {
+    //    await dispatchEventToPage({
+    //      name: "request-goto-frame",
+    //      frame: nextFrame,
+    //    });
+    //  } else {
+    //    handleAnimationEnd();
+    //  }
+    //}
+
+    //async function handleAnimationEnd() {
+    //  await browser.close();
+    //  progressBar.stop();
+
+    //  const result = fs.readdirSync(screenshotBase).filter((ss) => {
+    //    return ss.indexOf(`.${screenshotExt}`) !== -1;
+    //  });
+
+    //  resolve({
+    //    baseDir: path.resolve(screenshotBase),
+    //    files: result,
+    //  });
+    //}
+
+    async function dispatchEventToPage(page, data) {
       await page.evaluate(function (data) {
         window.postMessage(data);
       }, data);
     }
 
-    function listenFor(type) {
+    function listenFor(page, type) {
       return page.evaluateOnNewDocument((type) => {
         window.addEventListener(type, (e) => {
           window.onMessageReceivedEvent({ type, data: e.data });
@@ -160,20 +263,10 @@ module.exports = async function recordDisplayAd(target, fps) {
       }, type);
     }
 
-    await listenFor("message"); // Listen for "message" custom event on page load.
+    await listenFor(page, "message"); // Listen for "message" custom event on page load.
 
     console.log("minimal args");
 
-    await page.goto(url, {
-      // waitUntil: "networkidle0",
-    });
-
-    await page.waitForSelector(".banner", {
-      visible: true,
-    });
-
-    await dispatchEventToPage({
-      name: "request-animation-config",
-    });
+    await page.goto(url);
   });
 };
