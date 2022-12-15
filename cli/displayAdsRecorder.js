@@ -46,6 +46,7 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     type: "checkbox",
     name: "location",
     message: "Please select ad(s) to record:",
+    validate: (answers) => answers.length > 0,
     choices: [
       { name: "all", checked: false },
       ...allAds.map((value) => {
@@ -60,8 +61,10 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
   configQuestions.push({
     type: "checkbox",
     name: "output",
-    message: "Please select additional output types (mp4 is done by default):",
+    message: "Please select output(s)",
+    validate: (answers) => answers.length > 0,
     choices: [
+      { name: "mp4", value: "mp4", checked: false },
       { name: "gif (animated)", value: "gif", checked: false },
       { name: "jpg (last frame)", value: "jpg", checked: false },
     ],
@@ -86,8 +89,21 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     type: "list",
     name: "fps",
     message: "Please select fps to record at",
+    when: function (answers) {
+      return answers.output.includes("mp4") || answers.output.includes("gif");
+    },
     choices: [{ name: 15 }, { name: 30 }, { name: 60 }],
     default: 1,
+  });
+
+  configQuestions.push({
+    type: "input",
+    name: "jpgMaxFileSize",
+    message: "Please select max KB filesize for backup image",
+    when: function (answers) {
+      return answers.output.includes("jpg");
+    },
+    default: 40,
   });
 
   const adSelection = await inquirer.prompt(configQuestions);

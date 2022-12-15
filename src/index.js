@@ -15,47 +15,55 @@ module.exports = async function displayAdsRecorder(options) {
   app.use(express.static(targetDir));
 
   const server = app.listen(port, () => {
-    console.log(`server listening on port ${port}`);
+    //console.log(`server listening on port ${port}`);
   });
 
   for (const adLocation of adSelection.location) {
     const htmlBaseDirName = path.basename(path.dirname(adLocation)); // ./build/banner_300x250/index.html > banner_300x250
     const url = `http://localhost:${port}/${htmlBaseDirName}`;
 
-    // render screenshots from ad using puppeteer
-    const screenshots = await recordAd({
-      target: adLocation,
-      url,
-      fps: adSelection.fps,
-    });
+    // if mp4 or gif is selected, record screenshots
 
-    // convert screenshots to video and place in targetDir
-    const outputPathVideo = path.join(targetDir, `${htmlBaseDirName}.mp4`);
-    const videoFile = await renderVideo(
-      screenshots.baseDir,
-      adSelection.fps,
-      outputPathVideo
-    );
-    recordResult.videoPath = outputPathVideo;
+    if (
+      adSelection.output.includes("mp4") ||
+      adSelection.output.includes("gif")
+    ) {
+      // record screenshots from ad using puppeteer
+      const screenshots = await recordAd({
+        target: adLocation,
+        url,
+        fps: adSelection.fps,
+      });
 
-    // if gif is selected, convert video to GIF file and place in targetDir
-    if (adSelection.output.indexOf("gif") !== -1) {
-      const outputPathGif = path.join(targetDir, `${htmlBaseDirName}.gif`);
-      await renderGIf(
-        path.resolve(videoFile),
-        outputPathGif,
-        adSelection.gifLoopOptions
+      //render video from screenshots
+      const outputPathVideo = path.join(targetDir, `${htmlBaseDirName}.mp4`);
+      const videoFile = await renderVideo(
+        screenshots.baseDir,
+        adSelection.fps,
+        outputPathVideo
       );
-      recordResult.gifPath = outputPathGif;
+      recordResult.videoPath = outputPathVideo;
+
+      // if gif is selected, convert video to GIF file and place in targetDir
+      if (adSelection.output.includes("gif")) {
+        const outputPathGif = path.join(targetDir, `${htmlBaseDirName}.gif`);
+        await renderGIf(
+          path.resolve(videoFile),
+          outputPathGif,
+          adSelection.gifLoopOptions
+        );
+        recordResult.gifPath = outputPathGif;
+      }
     }
 
     // if backup img is selected, convert last image from sequence and place in targetDir
-    if (adSelection.output.indexOf("jpg") !== -1) {
+    if (adSelection.output.includes("jpg")) {
       const outputPathImg = path.join(targetDir, `${htmlBaseDirName}.jpg`);
-      const backupImg = await getBackupImage(
-        `${screenshots.baseDir}/${screenshots.files.slice(-1)}`,
-        outputPathImg
-      );
+      await getBackupImage({
+        url,
+        outputPathImg,
+        maxSizeBytes: adSelection.jpgMaxFileSize * 1024,
+      });
       recordResult.jpgPath = outputPathImg;
     }
   }
