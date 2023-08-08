@@ -9,11 +9,11 @@ module.exports = async function recordDisplayAd({
   outputPathImg,
   maxSizeBytes = 40 * 1024,
 }) {
-  console.log(
-    `getting backup image ${outputPathImg} with max filesize ${Math.round(
-      maxSizeBytes / 1024
-    )}KB`
-  );
+  // console.log(
+  //   `getting backup image ${outputPathImg} with max filesize ${Math.round(
+  //     maxSizeBytes / 1024
+  //   )}KB`
+  // );
   return new Promise(async (resolve) => {
     const browser = await puppeteer.launch({
       headless: true, // headless to false for testing
@@ -74,11 +74,11 @@ module.exports = async function recordDisplayAd({
           quality: quality - 1,
         });
       } else {
-        console.log(
-          `saving image ${outputPathImg} weighing ${Math.round(
-            output.info.size / 1024
-          )}KB at quality level ${quality}`
-        );
+        // console.log(
+        //   `saving image ${outputPathImg} weighing ${Math.round(
+        //     output.info.size / 1024
+        //   )}KB at quality level ${quality}`
+        // );
         fs.writeFileSync(outputPathImg, output.data);
       }
     }

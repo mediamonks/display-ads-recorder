@@ -10,11 +10,15 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
 // const base64 = require("../src/util/base64");
 
 (async () => {
-  // program
-  //     .version(packageJson.version)
-  //     .option('-g, --glob <data>', 'Globbing pattern like "-p ./src/**/.richmediarc"')
-  //     .parse(process.argv);
-  // const options = program.opts();
+  program
+    .version(packageJson.version)
+    // .option('-g, --glob <data>', 'Globbing pattern like "-p ./src/**/.richmediarc"')
+    .option('-c, --chunkSize <data>', 'Define chunkSize', 10)
+    .option('-t, --targetDir <data>', 'Set target dir')
+    .option('-b, --backup <data>', 'If you want to run backup images only', 0)
+    .option('-a, --all', 'If you want to record all', false)
+    .parse(process.argv);
+  const options = program.opts();
 
   console.log(
     `Welcome to the ${chalk.green.bold(`Display.Monks Record Tool`)} v${
@@ -30,11 +34,13 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     "see example here: http://www.github.com/mirkovw/display-record-template"
   );
 
-  const { targetDir } = await inquirer.prompt({
+  const { targetDir } = options.targetDir
+  ? options
+  : await inquirer.prompt({
     type: "input",
     name: "targetDir",
     message: "Target Dir?",
-    default: "./build",
+    default: './build',
   });
 
   const allAds = await findAdsInDirectory(targetDir);
@@ -42,7 +48,10 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
   console.log(`found ${allAds.length} ad(s)`);
 
   const configQuestions = [];
-  configQuestions.push({
+
+  const { location } = options.all
+  ? { location: allAds }
+  : await inquirer.prompt({
     type: "checkbox",
     name: "location",
     message: "Please select ad(s) to record:",
@@ -58,7 +67,9 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     ],
   });
 
-  configQuestions.push({
+  const { output } = options.backup
+  ? { output: ["jpg"] }
+  : await inquirer.prompt({
     type: "checkbox",
     name: "output",
     message: "Please select output(s)",
@@ -73,11 +84,9 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
   configQuestions.push({
     type: "list",
     name: "gifLoopOptions",
+    when: output.includes("gif"),
     message:
       "You selected .gif as additional output. Would you like it run once or loop?",
-    when: function (answers) {
-      return answers.output.includes("gif");
-    },
     choices: [
       { name: "Run once", value: "-1" },
       { name: "Loop", value: "0" },
@@ -88,34 +97,36 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
   configQuestions.push({
     type: "list",
     name: "fps",
+    when: output.includes("mp4") || output.includes("gif"),
     message: "Please select fps to record at",
-    when: function (answers) {
-      return answers.output.includes("mp4") || answers.output.includes("gif");
-    },
     choices: [{ name: 15 }, { name: 30 }, { name: 60 }],
     default: 1,
   });
 
-  configQuestions.push({
+  const { jpgMaxFileSize } = options.backup
+  ? { jpgMaxFileSize: options.backup }
+  : await inquirer.prompt({
     type: "input",
     name: "jpgMaxFileSize",
+    when: output.includes("jpg"),
     message: "Please select max KB filesize for backup image",
-    when: function (answers) {
-      return answers.output.includes("jpg");
-    },
     default: 40,
   });
 
   const adSelection = await inquirer.prompt(configQuestions);
 
-  if (adSelection.location.indexOf("all") > -1) {
-    adSelection.location = allAds;
-  }
+  adSelection.location = options.all
+  ? location
+  : (location.indexOf("all") > -1)
+    ? allAds
+    : location;
+
+  adSelection.output = output
+  adSelection.jpgMaxFileSize = jpgMaxFileSize
 
   await displayAdsRecorder({
     targetDir,
     adSelection,
-  });
+  }, options.chunkSize);
 
-  console.log("done");
 })();
