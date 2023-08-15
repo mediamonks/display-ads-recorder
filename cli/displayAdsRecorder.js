@@ -110,16 +110,14 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
   : { fps: undefined }
 
   const { jpgMaxFileSize } = output.includes("jpg")
-  ? options.jpg == false // if jpg is selected via answers - ask for KB, otherwise use specified or default value
+  ? !options.jpg || options.jpg == true // so if no flag at all or flag only
     ? await inquirer.prompt({
         type: "input",
         name: "jpgMaxFileSize",
         message: "Please select max KB filesize for backup image",
         default: 40,
       })
-    : options.jpg != true
-      ? { jpgMaxFileSize: options.jpg }
-      : { jpgMaxFileSize: 40 }
+    : { jpgMaxFileSize: options.jpg }
   : { jpgMaxFileSize: undefined }
 
   const adSelection = {
