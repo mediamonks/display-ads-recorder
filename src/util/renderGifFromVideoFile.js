@@ -1,6 +1,5 @@
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffmpeg = require('fluent-ffmpeg');
-const cliProgress = require("cli-progress");
 const path = require('path');
 const fs = require('fs');
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -8,12 +7,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 module.exports = async function renderGifFromVideoFile(inputVideo, outputPath, gifLoopOptions) {
 
   const input = inputVideo;
-  const paletteOutput = path.join(path.dirname(outputPath), '/temp_palette.png');
-
-  const progressBar = new cliProgress.SingleBar({
-    format: 'rendering gif            [{bar}] {percentage}%'
-  }, cliProgress.Presets.shades_classic);
-  progressBar.start(100, 0);
+  const paletteOutput = path.join(path.dirname(outputPath), path.basename(inputVideo, path.extname(inputVideo)), 'temp_palette.png');
 
   // create pallette
   await new Promise((resolve, reject) => {
@@ -32,7 +26,6 @@ module.exports = async function renderGifFromVideoFile(inputVideo, outputPath, g
       reject(e);
     }
   })
-  // console.log('created palette')
 
   // create gif
   await new Promise((resolve, reject) => {
@@ -49,11 +42,7 @@ module.exports = async function renderGifFromVideoFile(inputVideo, outputPath, g
       process.fps(30)
       process.output(outputPath);
 
-      process.on('progress', (progress) => {
-        progressBar.update(Math.round(progress.percentage));
-      })
       process.on('end', () => {
-        progressBar.stop();
         resolve()
       })
       process.run();

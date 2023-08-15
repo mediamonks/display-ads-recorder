@@ -1,18 +1,9 @@
 const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs-extra");
-const cliProgress = require("cli-progress");
 const minimal_args = require("../data/minimalArgs");
 const padLeadingZeros = require("./padLeadingZeros");
 const getFramesArrays = require("./getFramesArrays");
-
-const progressBar = new cliProgress.SingleBar(
-  {
-    format:
-      "capturing screenshots    [{bar}] {percentage}% | ETA: {eta}s | {value}/{total}",
-  },
-  cliProgress.Presets.shades_classic
-);
 
 const screenshotBaseFilename = "screenshot_";
 const screenshotExt = "jpg";
@@ -30,6 +21,7 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
       //executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // if we ever want to include video. but then the video needs to be controlled by the timeline..
       headless: true, // headless to false for testing
       args: minimal_args,
+      ignoreHTTPSErrors: true
     });
 
     const page = await browser.newPage();
@@ -48,9 +40,6 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
         fps,
         instances: chromiumInstancesAmount,
       });
-
-      progressBar.start(Math.ceil(animationInfo.duration * fps), 0);
-      const startTime = new Date().getTime();
 
       await Promise.all(
         framesArrays.map((framesArray) => {
@@ -96,7 +85,6 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
 
               currentIndex++;
               totalScreenshotsRecorded++;
-              progressBar.update(totalScreenshotsRecorded);
 
               if (currentIndex < framesArray.length) {
                 await dispatchEventToPage(page, {
@@ -114,12 +102,6 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
             await page.goto(url);
           });
         })
-      );
-
-      progressBar.stop();
-
-      console.log(
-        `done in ${(new Date().getTime() - startTime) / 1000} seconds`
       );
 
       const result = fs.readdirSync(screenshotBase).filter((ss) => {
