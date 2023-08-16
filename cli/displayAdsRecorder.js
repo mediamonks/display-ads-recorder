@@ -71,8 +71,8 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     { name: "jpg (last frame)", value: "jpg", checked: false },
   ]
 
-  const output = outputChoices.some(e => options[e.value] != undefined)
-  ? outputChoices.map(e => e.value).filter(e => options[e] != undefined)
+  const output = outputChoices.some(e => options[e.value])
+  ? outputChoices.map(e => e.value).filter(e => options[e])
   : (await inquirer.prompt({
       type: "checkbox",
       name: "output",

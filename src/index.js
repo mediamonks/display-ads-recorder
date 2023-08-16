@@ -22,6 +22,7 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
     //console.log(`server listening on port ${port}`);
   });
   
+  const startTime = new Date().getTime();
   const resultChunks = splitArrayIntoChunks(adSelection.location, chunkSize);
   // if mp4 or gif is selected, record screenshots
   // since nodejs cache can improve performance lets run funtions in sequence
@@ -30,10 +31,12 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
     adSelection.output.includes("gif")
   ) {
     await runWithChunks(recordScreenshots, "capturing screenshots")
-    await runWithChunks(recordVideo, "making videos")
-    
+
     if (adSelection.output.includes("gif")) {
+      await runWithChunks(recordVideo, "making videos for gif")
       await runWithChunks(recordGif, "making GIFs")
+    } else {
+      await runWithChunks(recordVideo, "making videos")
     }
 
     await runWithChunks(clearScreenshots, "clearing tmp files")
@@ -93,7 +96,7 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
   }
 
   async function clearScreenshots(adLocation) {
-    const screenshots = path.join(path.dirname(adLocation), ".cache/screenshots/");
+    const screenshots = path.join(path.dirname(adLocation), ".cache/");
     await fs.rm(screenshots, { force: true, recursive: true })
   }
 
@@ -114,6 +117,7 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
     console.log(`done in ${new Date().getTime() - startTime}ms`);
   }
 
+  console.log(`recorded all in ${new Date().getTime() - startTime}ms`);
   server.close();
 }
 
