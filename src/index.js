@@ -32,11 +32,15 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
   ) {
     await runWithChunks(recordScreenshots, "capturing screenshots")
 
+    await runWithChunks(
+      recordVideo,
+      adSelection.output.includes("mp4")
+        ? "making videos"
+        : "making videos for GIFs"
+    )
+    
     if (adSelection.output.includes("gif")) {
-      await runWithChunks(recordVideo, "making videos for gif")
       await runWithChunks(recordGif, "making GIFs")
-    } else {
-      await runWithChunks(recordVideo, "making videos")
     }
 
     await runWithChunks(clearScreenshots, "clearing tmp files")
