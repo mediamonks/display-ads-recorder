@@ -14,7 +14,7 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     .version(packageJson.version)
     .option('-c, --chunkSize <data>', 'Define chunkSize', 10)
     .option('-t, --targetDir <data>', 'Set target dir')
-    .option('-a, --all', 'If you want to record all', false)
+    .option('-a, --all', 'If you want to record all')
     .option('-j, --jpg [size]', 'If you want to output jpg and optional kbs')
     .addOption(
       new program.Option("-g, --gif [loop]", "If you want to output animated gifs and loop them or play once").choices(['once', 'loop'])
@@ -47,13 +47,34 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
 
   console.log(`found ${allAds.length} ad(s)`);
   
-  const location = options.all
-  ? allAds
-  : (await inquirer.prompt({
+  const outputChoices = [
+    { name: "mp4", value: "mp4", checked: false },
+    { name: "gif (animated)", value: "gif", checked: false },
+    { name: "jpg (last frame)", value: "jpg", checked: false },
+  ]
+
+  const gifLoopOptionsMap = {
+    'once': -1,
+    'loop': 0
+  }
+
+  // data parsed from cli
+  const adSelection = {
+    location: options.all,
+    output: outputChoices.map(e => e.value).filter(e => options[e]),
+    gifLoopOptions: gifLoopOptionsMap[options.gif],
+    fps: options.fps,
+    jpgMaxFileSize: options.jpg
+  }
+
+  // inquirer questions
+  const questions = [
+    {
       type: "checkbox",
       name: "location",
       message: "Please select ad(s) to record:",
       validate: (answers) => answers.length > 0,
+      when: !adSelection.location,
       choices: [
         { name: "all", checked: false },
         ...allAds.map((value) => {
@@ -63,78 +84,62 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
           };
         }),
       ],
-    })).location;
-
-  const outputChoices = [
-    { name: "mp4", value: "mp4", checked: false },
-    { name: "gif (animated)", value: "gif", checked: false },
-    { name: "jpg (last frame)", value: "jpg", checked: false },
-  ]
-
-  const output = outputChoices.some(e => options[e.value])
-  ? outputChoices.map(e => e.value).filter(e => options[e])
-  : (await inquirer.prompt({
+    },
+    {
       type: "checkbox",
       name: "output",
       message: "Please select output(s)",
       validate: (answers) => answers.length > 0,
+      when: !adSelection.output.length,
       choices: outputChoices
-    })).output;
+    },
+    {
+      type: "list",
+      name: "gifLoopOptions",
+      message:
+        "You selected .gif as additional output. Would you like it run once or loop?",
+      choices: [
+        { name: "Run once", value: "-1" },
+        { name: "Loop", value: "0" },
+      ],
+      when: answers => (adSelection.output.includes("gif") && adSelection.gifLoopOptions === undefined) || answers.output?.includes("gif"),
+      default: 0,
+    },
+    {
+      type: "list",
+      name: "fps",
+      message: "Please select fps to record at",
+      choices: [{ name: 15 }, { name: 30 }, { name: 60 }],
+      when: answers => (
+          (adSelection.output.includes("gif") || adSelection.output.includes("mp4")) ||
+          (answers.output?.includes("gif") || answers.output?.includes("mp4"))
+        ) &&
+        !adSelection.fps,
+      default: 1,
+    },
+    {
+      type: "input",
+      name: "jpgMaxFileSize",
+      message: "Please select max KB filesize for backup image",
+      when: answers => (adSelection.output.includes("jpg") && adSelection.jpgMaxFileSize === true) || answers.output?.includes("jpg"),
+      default: 40,
+    }
+  ]
 
+  const answers = await inquirer.prompt(questions)
 
-  const gifLoopOptionsMap = {
-    'once': -1,
-    'loop': 0
+  // replace cli data with data from answers
+  for (const [key, value] of Object.entries(answers)) {
+    if (value) {
+      adSelection[key] = value
+    }
   }
 
-  const gifLoopOptions = output.includes("gif")
-  ? options.gif != true
-    ? gifLoopOptionsMap[options.gif]
-    : (await inquirer.prompt({
-        type: "list",
-        name: "gifLoopOptions",
-        message:
-          "You selected .gif as additional output. Would you like it run once or loop?",
-        choices: [
-          { name: "Run once", value: "-1" },
-          { name: "Loop", value: "0" },
-        ],
-        default: 0,
-      })).gifLoopOptions
-  : undefined
-
-  const fps = (output.includes("mp4") || output.includes("gif"))
-  ? options.fps
-    ? options.fps
-    : (await inquirer.prompt({
-        type: "list",
-        name: "fps",
-        message: "Please select fps to record at",
-        choices: [{ name: 15 }, { name: 30 }, { name: 60 }],
-        default: 1,
-      })).fps
-  : undefined
-
-  const jpgMaxFileSize = output.includes("jpg")
-  ? !options.jpg || options.jpg == true // so if no flag at all or flag only
-    ? (await inquirer.prompt({
-        type: "input",
-        name: "jpgMaxFileSize",
-        message: "Please select max KB filesize for backup image",
-        default: 40,
-      })).jpgMaxFileSize
-    : options.jpg
-  : undefined
-
-  const adSelection = {
-    output,
-    jpgMaxFileSize,
-    gifLoopOptions,
-    fps,
-    location: (options.all || location.indexOf("all") > -1)
-      ? allAds
-      : location,
+  if (adSelection.location || answers.location.indexOf("all") > -1) {
+    adSelection.location = allAds
   }
+
+  console.log(adSelection)
 
   await displayAdsRecorder({
     targetDir,
