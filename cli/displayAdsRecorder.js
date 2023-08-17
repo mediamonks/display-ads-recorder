@@ -29,9 +29,9 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
 
   console.log(
     `Welcome to the ${chalk.green.bold(`Display.Monks Record Tool`)} v${packageJson.version}`,
-    "make sure you import and include the enableAdsRecorder(timeline, config) function from display temple",
-    "so the ad can dispatch the right events to the recorder tool",
-    "see example here: http://www.github.com/mirkovw/display-record-template"
+    "\nmake sure you import and include the enableAdsRecorder(timeline, config) function from display temple",
+    "\nso the ad can dispatch the right events to the recorder tool",
+    "\nsee example here: http://www.github.com/mirkovw/display-record-template"
   );
   
   const { targetDir } = options.targetDir
