@@ -139,6 +139,12 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     adSelection.location = allAds;
   }
 
+  for (const [key, value] of Object.entries(adSelection)) {
+    if (value == undefined) {
+      delete adSelection[key]
+    }
+  }
+
   await displayAdsRecorder({
     targetDir,
     adSelection,
