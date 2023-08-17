@@ -135,7 +135,7 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     }
   }
 
-  if (adSelection.location || answers.location.indexOf("all") > -1) {
+  if (options.all || adSelection.location.indexOf("all") > -1) {
     adSelection.location = allAds;
   }
 
