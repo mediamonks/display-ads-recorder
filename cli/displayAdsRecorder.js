@@ -40,7 +40,7 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     type: "input",
     name: "targetDir",
     message: "Target Dir?",
-    default: './build',
+    default: "./build",
   });
 
   const allAds = await findAdsInDirectory(targetDir);
@@ -136,10 +136,8 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
   }
 
   if (adSelection.location || answers.location.indexOf("all") > -1) {
-    adSelection.location = allAds
+    adSelection.location = allAds;
   }
-
-  console.log(adSelection)
 
   await displayAdsRecorder({
     targetDir,
