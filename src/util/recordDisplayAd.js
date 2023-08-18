@@ -7,7 +7,7 @@ const getFramesArrays = require("./getFramesArrays");
 
 const screenshotBaseFilename = "screenshot_";
 const screenshotExt = "jpg";
-const chromiumInstancesAmount = 8;
+const chromiumInstancesAmount = 1;
 
 module.exports = async function recordDisplayAd({ target, url, fps }) {
   return new Promise(async (resolve) => {
