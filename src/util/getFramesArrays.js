@@ -2,7 +2,7 @@ module.exports = ({ duration, fps, instances }) => {
   let allFrames = [],
     splitArrays = [];
 
-  for (let i = 0; i < Math.ceil(duration * fps); i++) {
+  for (let i = 0; i <= Math.ceil(duration * fps); i++) {
     allFrames.push({
       frameNr: i,
       frameTime: 1000 * (i / fps),
