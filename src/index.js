@@ -1,4 +1,5 @@
 const recordAd = require("./util/recordDisplayAd");
+const addAudioToVideo = require("./util/addAudioToVideo");
 const renderVideo = require("./util/renderVideoFromFiles");
 const getBackupImage = require("./util/getBackupImage");
 const renderGIf = require("./util/renderGifFromVideoFile");
@@ -41,6 +42,10 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
     
     if (adSelection.output.includes("gif")) {
       await runWithChunks(recordGif, "making GIFs")
+    }
+
+    if (adSelection.output.includes("mp4") && adSelection.audio) {
+      await runWithChunks(addAudio, "adding audio track to videos")
     }
 
     await runWithChunks(clearScreenshots, "clearing tmp files")
@@ -99,6 +104,18 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
     });
   }
 
+  async function addAudio(adLocation) {
+    const [url, htmlBaseDirName] = urlFromAdLocation(adLocation);
+
+    const video = path.join(targetDir, `${htmlBaseDirName}.mp4`)
+    const audio = path.join(targetDir, adSelection.audio)
+    await addAudioToVideo(
+      video,
+      audio,
+      adSelection.volume
+    );
+  }
+
   async function clearScreenshots(adLocation) {
     const screenshots = path.join(path.dirname(adLocation), ".cache/");
     await fs.rm(screenshots, { force: true, recursive: true })
@@ -108,7 +125,7 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
     const startTime = new Date().getTime();
     const progressBar = new cliProgress.SingleBar({
       format:
-        `${name}${' '.repeat(25 - name.length)}[{bar}] {percentage}% | ETA: {eta}s | {value}/{total}`,
+        `${name}${' '.repeat(30 - name.length)}[{bar}] {percentage}% | ETA: {eta}s | {value}/{total}`,
     }, cliProgress.Presets.shades_classic);
     progressBar.start(adSelection.location.length, 0);
   
