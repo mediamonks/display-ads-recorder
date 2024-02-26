@@ -20,6 +20,8 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
       new program.Option("-g, --gif [loop]", "If you want to output animated gifs and loop them or play once").choices(['once', 'loop'])
     )
     .option("-m, --mp4", "If you want to output video")
+    .option("-au, --audio <relative path to audio file from target dir>", "If you want to add audio")
+    .option("-v, --volume <volume>", "When adding audio you can specify volume")
     .addOption(
       new program.Option("-f, --fps <data>", "fps for gif and/or mp4").choices(['15', '30', '60'])
     )
@@ -64,7 +66,9 @@ const findAdsInDirectory = require("../src/util/findAdsInDirectory");
     output: outputChoices.map(e => e.value).filter(e => options[e]),
     gifLoopOptions: gifLoopOptionsMap[options.gif],
     fps: options.fps,
-    jpgMaxFileSize: options.jpg
+    jpgMaxFileSize: options.jpg,
+    audio: options.audio,
+    volume: options.volume,
   }
 
   // inquirer questions

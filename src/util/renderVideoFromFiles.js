@@ -18,6 +18,7 @@ module.exports = async function renderVideoFromFiles(
       process.fps(fps);
       process.videoBitrate(10000);
       process.output(output);
+      process.outputOptions(['-pix_fmt yuv420p'])
       process.on("end", () => {
         resolve(output);
       });
