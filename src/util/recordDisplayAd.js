@@ -6,7 +6,6 @@ const padLeadingZeros = require("./padLeadingZeros");
 const getFramesArrays = require("./getFramesArrays");
 
 const screenshotBaseFilename = "screenshot_";
-const screenshotExt = "jpg";
 const chromiumInstancesAmount = 1;
 
 module.exports = async function recordDisplayAd({ target, url, fps }) {
@@ -21,98 +20,74 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
       //executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // if we ever want to include video. but then the video needs to be controlled by the timeline..
       headless: true, // headless to false for testing
       args: minimal_args,
-      ignoreHTTPSErrors: true
+      ignoreHTTPSErrors: true,
+      defaultViewport: null,
     });
 
     const page = await browser.newPage();
 
+    let framesArray;
+    let currentIndex = 0;
+
+    async function recordFrame() {
+      const screenshot_nr = framesArray[currentIndex].frameNr;
+      await page.screenshot({
+        path:
+          screenshotBase +
+          screenshotBaseFilename +
+          padLeadingZeros(screenshot_nr, 6) +
+          ".jpg",
+        type: "jpeg",
+        quality: 100,
+      });
+
+      currentIndex++;
+
+      if (currentIndex < framesArray.length) {
+        // request next frame
+        await dispatchEventToPage(page, {
+          name: "request-goto-frame",
+          frame: framesArray[currentIndex].frameTime,
+        });
+      } else {
+        // finish
+        await browser.close();
+        resolve();
+      }
+    }
+
     await page.exposeFunction("onMessageReceivedEvent", async (e) => {
       if (e.data.name === "animation-ready") {
-        await browser.close();
-        await handleAnimationInfoReceived(e.data);
+        // init
+        const animationInfo = e.data;
+
+        const deviceScaleFactor = await page.evaluate('window.devicePixelRatio') // so the pixels are real, not blurred
+        
+        await page.setViewport({
+          width: animationInfo.width,
+          height: animationInfo.height,
+          deviceScaleFactor,
+        });
+        
+        framesArray = getFramesArrays({
+          duration: animationInfo.duration,
+          fps,
+          instances: chromiumInstancesAmount,
+        }).flat(1);
+
+        // start frame capturing
+        await dispatchEventToPage(page, {
+          name: "request-goto-frame",
+          frame: 0,
+        });
+      } else if (e.data.name === "current-frame") {
+        await recordFrame();
       }
     });
-
-    async function handleAnimationInfoReceived(animationInfo) {
-      let totalScreenshotsRecorded = 0;
-      const framesArrays = getFramesArrays({
-        duration: animationInfo.duration,
-        fps,
-        instances: chromiumInstancesAmount,
-      });
-
-      await Promise.all(
-        framesArrays.map((framesArray) => {
-          return new Promise(async (resolve) => {
-            const browser = await puppeteer.launch({
-              headless: true, // headless to false for testing
-              args: minimal_args,
-            });
-
-            const page = await browser.newPage();
-
-            await page.setViewport({
-              width: animationInfo.width,
-              height: animationInfo.height,
-            });
-
-            await page.exposeFunction("onMessageReceivedEvent", async (e) => {
-              switch (e.data.name) {
-                case "animation-ready":
-                  await dispatchEventToPage(page, {
-                    name: "request-goto-frame",
-                    frame: framesArray[0].frameTime,
-                  });
-                  break;
-                case "current-frame":
-                  await recordFrame();
-                  break;
-              }
-            });
-
-            let currentIndex = 0;
-            async function recordFrame() {
-              const screenshot_nr = framesArray[currentIndex].frameNr;
-              const ssPath = await page.screenshot({
-                path:
-                  screenshotBase +
-                  screenshotBaseFilename +
-                  padLeadingZeros(screenshot_nr, 6) +
-                  ".jpg",
-                type: "jpeg",
-                quality: 100,
-              });
-
-              currentIndex++;
-              totalScreenshotsRecorded++;
-
-              if (currentIndex < framesArray.length) {
-                await dispatchEventToPage(page, {
-                  name: "request-goto-frame",
-                  frame: framesArray[currentIndex].frameTime,
-                });
-              } else {
-                await browser.close();
-                resolve();
-              }
-            }
-
-            await listenFor(page, "message"); // Listen for "message" custom event on page load.
-
-            await page.goto(url);
-          });
-        })
-      );
-
-      const result = fs.readdirSync(screenshotBase).filter((ss) => {
-        return ss.indexOf(`.${screenshotExt}`) !== -1;
-      });
-
-      resolve({
-        baseDir: path.resolve(screenshotBase),
-        files: result,
-      });
-    }
+    
+    await listenFor(page, "message"); // Listen for "message" custom event on page load.
+    
+    await page.goto(url);
 
     async function dispatchEventToPage(page, data) {
       await page.evaluate(function (data) {
@@ -127,9 +102,5 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
         });
       }, type);
     }
-
-    await listenFor(page, "message"); // Listen for "message" custom event on page load.
-
-    await page.goto(url);
   });
 };
