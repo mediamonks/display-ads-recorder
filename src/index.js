@@ -126,16 +126,28 @@ module.exports = async function displayAdsRecorder(options, chunkSize = 10) {
     const progressBar = new cliProgress.SingleBar({
       format:
         `${name}${' '.repeat(30 - name.length)}[{bar}] {percentage}% | ETA: {eta}s | {value}/{total}`,
+        barCompleteChar: '\u2588',
+        barIncompleteChar: '\u2591',
+        hideCursor: true
     }, cliProgress.Presets.shades_classic);
+
+    const total = adSelection.location.length;
     progressBar.start(adSelection.location.length, 0);
   
-    for (const [index, resultChunk] of resultChunks.entries()) {
-      await Promise.all(resultChunk.map(fn));
-      progressBar.update(index * chunkSize + resultChunk.length);
-    }
-    
-    progressBar.stop();
-    console.log(`done in ${new Date().getTime() - startTime}ms`);
+    try {
+      for (const [index, resultChunk] of resultChunks.entries()) {
+          await Promise.all(resultChunk.map(async (location) => {
+              await fn(location);
+              progressBar.increment();
+          }));
+      }
+  } catch (error) {
+      console.error('\nError:', error);
+  } finally {
+      progressBar.stop();
+  }
+
+  console.log(`done in ${new Date().getTime() - startTime}ms`);
   }
 
   console.log(`recorded all in ${new Date().getTime() - startTime}ms`);

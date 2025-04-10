@@ -9,15 +9,35 @@ module.exports = async function recordDisplayAd({
   outputPathImg,
   maxSizeBytes = 40 * 1024,
 }) {
+
+  let browser = null;
+  let page = null;
+  
   // console.log(
   //   `getting backup image ${outputPathImg} with max filesize ${Math.round(
   //     maxSizeBytes / 1024
   //   )}KB`
   // );
-  return new Promise(async (resolve) => {
-    const browser = await puppeteer.launch({
-      headless: true, // headless to false for testing
-      args: minimal_args,
+
+  const launchOptions = {
+        headless: true, // Using new headless mode
+        args: [
+          ...minimal_args,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security'
+        ],
+        ignoreHTTPSErrors: true,
+        defaultViewport:null,
+        protocolTimeout: 30000
+      };
+
+  return new Promise(async (resolve, reject) => {
+    browser = await puppeteer.launch(launchOptions).catch(err => {
+      console.error('[Error] Browser launch failed:', err);
+      throw err;
     });
 
     const page = await browser.newPage();
