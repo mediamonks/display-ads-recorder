@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.6.0] - 2025-05-23
+
+### Updated
+- Minor version bump for maintenance update
+
 ## [3.5.0] - 2025-04-10
 
 ### Updated
