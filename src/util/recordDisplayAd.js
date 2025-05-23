@@ -9,27 +9,70 @@ const screenshotBaseFilename = "screenshot_";
 const chromiumInstancesAmount = 1;
 
 module.exports = async function recordDisplayAd({ target, url, fps }) {
-  return new Promise(async (resolve) => {
+  let browser = null;
+
+  return new Promise(async (resolve, reject) => {
+
     let screenshotBase = path.join(path.dirname(target), ".cache/screenshots/");
 
     if (!fs.existsSync(screenshotBase))
       fs.mkdirSync(screenshotBase, { recursive: true });
     await fs.emptyDir(screenshotBase); // remove old screenshots
 
-    const browser = await puppeteer.launch({
-      //executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // if we ever want to include video. but then the video needs to be controlled by the timeline..
-      headless: true, // headless to false for testing
-      args: minimal_args,
+    const launchOptions = {
+      headless: true, // Using new headless mode
+      args: [
+        ...minimal_args,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-web-security'
+      ],
       ignoreHTTPSErrors: true,
-      defaultViewport: null,
+      defaultViewport:null,
+      protocolTimeout: 30000
+    };
+
+    // console.log('[Debug] Launching browser with options:', launchOptions);
+    console.log('[Debug] Launching browser');
+    browser = await puppeteer.launch(launchOptions).catch(err => {
+      console.error('[Error] Browser launch failed:', err);
+      throw err;
     });
 
+    let isClosing = false;  // Add flag to track intentional closure
+
+    // Add browser event handlers with proper error handling
+    browser.on('disconnected', () => {
+      console.log('[Debug] Browser disconnected');
+      if (!isClosing && page && !page.isClosed()) {
+        reject(new Error('Browser unexpectedly disconnected'));
+      }
+    });
+
+    console.log('[Debug] Creating new page');
     const page = await browser.newPage();
+
+    // Add page event handlers
+    page.on('error', err => {
+      console.error('[Error] Page crashed:', err);
+      reject(err);
+    });
+
+    page.on('pageerror', err => {
+      console.error('[Error] Page error:', err);
+    });
+
+    page.on('console', msg => {
+      // console.log(`[Page Console] ${msg.type()}: ${msg.text()}`);
+    });
 
     let framesArray;
     let currentIndex = 0;
 
     async function recordFrame() {
+      try {
       const screenshot_nr = framesArray[currentIndex].frameNr;
       await page.screenshot({
         path:
@@ -43,17 +86,30 @@ module.exports = async function recordDisplayAd({ target, url, fps }) {
 
       currentIndex++;
 
+      // Calculate progress percentage
+      const progress = (currentIndex / framesArray.length) * 100;
+      process.stdout.write(`\rCapturing frame ${currentIndex}/${framesArray.length} (${progress.toFixed(1)}%)`);
+
       if (currentIndex < framesArray.length) {
-        // request next frame
         await dispatchEventToPage(page, {
           name: "request-goto-frame",
           frame: framesArray[currentIndex].frameTime,
         });
       } else {
-        // finish
+        process.stdout.write('\n'); // New line after completion
+        isClosing = true;
         await browser.close();
         resolve();
       }
+    } catch (error) {
+      process.stdout.write('\n'); // New line in case of error
+      console.error(`[Error] Failed to record frame:`, error);
+      if (!isClosing) {
+          isClosing = true;
+          await browser.close();
+      }
+      reject(error);
+  }
     }
 
     await page.exposeFunction("onMessageReceivedEvent", async (e) => {
